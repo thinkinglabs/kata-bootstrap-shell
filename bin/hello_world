@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+
+# DON't enable -x: that would print credentials on the console
+# -u: Treat unset variables as an error when substituting, not required as assert_not_empty gives more info
+# -e: Exit immediately if a command exits with a non-zero status
+# -E: If set, the ERR trap is inherited by shell functions.
+# -o pipefail: the return value of a pipeline is the status of
+#              the last command to exit with a non-zero status,
+#              or zero if no command exited with a non-zero status
+set -eEo pipefail
+
+# shellcheck disable=SC2155
+readonly SCRIPT_NAME="$(basename "$0")"
+
+function usage() {
+  echo
+  echo "says hello"
+  echo
+  echo "usage: ${SCRIPT_NAME} <name>"
+  echo
+  echo -e "  <name>\tA name to say hello to."
+  echo
+  echo "the following environment variables should be present:"
+  echo
+  echo -e "  none"
+  echo
+}
+
+function log {
+  local -r level="$1"
+  local -r message="$2"
+  local -r timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+  >&2 echo -e "${timestamp} [${level}] [$SCRIPT_NAME] ${message}"
+}
+
+function log_info {
+  local -r message="$1"
+  log "INFO" "$message"
+}
+
+function log_error {
+  local -r message="$1"
+  log "ERROR" "$message"
+}
+
+function err_report() {
+  log_error "failure: error on line $1"
+  exit 1
+}
+
+function assert_not_empty {
+  local -r arg_name="$1"
+  local -r arg_value="$2"
+
+  if [[ -z "$arg_value" ]]; then
+    log_error "The value for '${arg_name}' cannot be empty"
+    usage
+    exit 1
+  fi
+}
+
+function assert_has_values {
+  local -r arg_name="$1"
+  local -r arg_regexp="$2"
+  local -r arg_value="$3"
+
+  if [[ ! ${arg_value} =~ ${arg_regexp} ]]; then
+    log_error "The value for '${arg_name}' must be '${arg_regexp}'"
+    usage
+    exit 1
+  fi
+}
+
+function assert_file_exists {
+  local -r file_name="$1"
+
+  if [[ ! -f "$file_name" ]]; then
+    log_error "The file '${file_name}' is missing"
+    exit 1
+  fi
+}
+
+function validate {
+  assert_not_empty "<name>" "$1"
+}
+
+function say_hello {
+  local -r name=$1
+  echo "Hello, ${name}!"
+}
+
+function main {
+  validate "$@"
+  say_hello "$@"
+}
+
+# ${parameter:+word}:
+# If parameter is null or unset, nothing is substituted, otherwise the expansion of word is substituted. 
+# When included from a shellspec, the __SOURCED__ variable is defined,
+# return is executed and the script ends here.
+${__SOURCED__:+return}
+
+trap 'err_report $LINENO' ERR
+
+main "$@"
