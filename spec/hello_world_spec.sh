@@ -1,4 +1,4 @@
-# shellspec shell=bash
+#shellspec shell=bash
 
 Describe 'hello_world'
   Include ./bin/hello_world
